@@ -159,12 +159,17 @@ def categorize_all_transactions(transactions: list) -> list:
 def calculate_basic_stats(transactions: list) -> dict:
     total_income = sum(t["amount"] for t in transactions if t["amount"] > 0)
     total_expense = sum(t["amount"] for t in transactions if t["amount"] < 0)
-
+    balance = total_income + total_expense
+    transaction_count = len(transactions)
+    count_income = sum(1 for t in transactions if t["amount"] > 0)
+    count_expense = sum(1 for t in transactions if t["amount"] < 0)
     return {
         "total_income": total_income,
         "total_expense": total_expense,
-        "balance": total_income + total_expense,
-        "transaction_count": len(transactions)
+        "balance": balance,
+        "transaction_count": transaction_count,
+        "income_transactions": count_income,
+        "expense_transactions": count_expense
     }
 
 
@@ -177,8 +182,29 @@ def calculate_by_category(transactions: list) -> dict:
         totals[cat]["count"] += 1
     for cat, val in totals.items():
         val["percent"] = (-val["sum"] / -total_expense * 100) if total_expense else 0
-    return dict(totals)
+    sorted_categories = sorted(totals.items(), key=lambda item: abs(item[1]["sum"]), reverse=True)
+    return dict(sorted_categories)
 
+def analyze_by_week(transactions: list) -> dict:
+    weekly = defaultdict(lambda: {"income": 0, "expenses": 0, "categories": []})
+    for t in transactions:
+        try:
+            d = datetime.datetime.strptime(t["date"], "%Y-%m-%d")
+        except Exception:
+            continue
+        # получаем год и номер недели
+        year, week, _ = d.isocalendar()
+        key = f"{year}-W{week:02d}"
+        amount = t["amount"]
+        if amount >= 0:
+            weekly[key]["income"] += amount
+        else:
+            weekly[key]["expenses"] += amount
+            category = t.get("category", "Без категории")
+            weekly[key]["categories"].append(category)
+    for week, data in weekly.items():
+        data["top_categories"] = Counter(data["categories"]).most_common(3)
+    return dict(weekly)
 
 def analyze_by_time(transactions: list) -> dict:
     monthly = defaultdict(lambda: {"income": 0, "expenses": 0, "categories": []})
@@ -197,6 +223,26 @@ def analyze_by_time(transactions: list) -> dict:
         data["top_categories"] = Counter(data["categories"]).most_common(3)
     return dict(monthly)
 
+def analyze_seasonal_trends(transactions: list) -> dict:
+    quarterly = defaultdict(lambda: {"income": 0, "expenses": 0, "categories": []})
+    for t in transactions:
+        try:
+            d = datetime.datetime.strptime(t["date"], "%Y-%m-%d")
+        except Exception:
+            continue
+        year = d.year
+        quarter = (d.month - 1) // 3 + 1
+        key = f"{year}-Q{quarter}"
+        amount = t["amount"]
+        if amount >= 0:
+            quarterly[key]["income"] += amount
+        else:
+            quarterly[key]["expenses"] += amount
+            category = t.get("category", "Без категории")
+            quarterly[key]["categories"].append(category)
+    for q, data in quarterly.items():
+        data["top_categories"] = Counter(data["categories"]).most_common(3)
+    return dict(quarterly)
 
 def analyze_historical_spending(transactions: list) -> dict:
     monthly_spending = defaultdict(lambda: defaultdict(float))
