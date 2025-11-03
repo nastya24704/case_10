@@ -185,26 +185,6 @@ def calculate_by_category(transactions: list) -> dict:
     sorted_categories = sorted(totals.items(), key=lambda item: abs(item[1]["sum"]), reverse=True)
     return dict(sorted_categories)
 
-def analyze_by_week(transactions: list) -> dict:
-    weekly = defaultdict(lambda: {"income": 0, "expenses": 0, "categories": []})
-    for t in transactions:
-        try:
-            d = datetime.datetime.strptime(t["date"], "%Y-%m-%d")
-        except Exception:
-            continue
-        # получаем год и номер недели
-        year, week, _ = d.isocalendar()
-        key = f"{year}-W{week:02d}"
-        amount = t["amount"]
-        if amount >= 0:
-            weekly[key]["income"] += amount
-        else:
-            weekly[key]["expenses"] += amount
-            category = t.get("category", "Без категории")
-            weekly[key]["categories"].append(category)
-    for week, data in weekly.items():
-        data["top_categories"] = Counter(data["categories"]).most_common(3)
-    return dict(weekly)
 
 def analyze_by_time(transactions: list) -> dict:
     monthly = defaultdict(lambda: {"income": 0, "expenses": 0, "categories": []})
